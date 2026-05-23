@@ -1,10 +1,9 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR.Abstractions;
-using MiniatR.Abstractions.Exceptions;
+using MiniatR.Exceptions;
 
-namespace MiniatR.Core;
+namespace MiniatR;
 
 internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
 {

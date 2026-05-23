@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR.Abstractions;
-using MiniatR.Abstractions.Exceptions;
+using MiniatR;
+using MiniatR.Exceptions;
 using MiniatR.Extensions;
 using MiniatR.Tests.Fixtures;
 

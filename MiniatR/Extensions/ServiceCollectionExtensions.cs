@@ -1,8 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR.Abstractions;
-using MiniatR.Abstractions.Exceptions;
-using MiniatR.Core;
+using MiniatR.Exceptions;
 
 namespace MiniatR.Extensions;
 

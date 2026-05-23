@@ -1,4 +1,4 @@
-namespace MiniatR.Abstractions;
+namespace MiniatR;
 
 public interface IRequestHandler<in TRequest, TResponse>
     where TRequest : IRequest<TResponse>

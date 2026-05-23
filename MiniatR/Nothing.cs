@@ -1,4 +1,4 @@
-namespace MiniatR.Abstractions;
+namespace MiniatR;
 
 public readonly struct Nothing : IEquatable<Nothing>, IComparable<Nothing>
 {

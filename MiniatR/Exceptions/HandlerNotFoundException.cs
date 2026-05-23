@@ -1,4 +1,4 @@
-namespace MiniatR.Abstractions.Exceptions;
+namespace MiniatR.Exceptions;
 
 public sealed class HandlerNotFoundException(Type requestType, Type? responseType)
     : InvalidOperationException(CreateMessage(requestType, responseType))

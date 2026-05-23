@@ -1,3 +1,3 @@
-namespace MiniatR.Abstractions;
+namespace MiniatR;
 
 public interface IMediator : ISender { }

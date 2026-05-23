@@ -1,12 +1,12 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR.Abstractions;
 
 namespace MiniatR.Extensions;
 
 public sealed class MiniatRConfiguration
 {
     private readonly IServiceCollection _services;
+
     internal List<Assembly> Assemblies { get; } = [];
     internal ServiceLifetime HandlerLifetime { get; private set; } = ServiceLifetime.Scoped;
     internal ServiceLifetime BehaviorLifetime { get; private set; } = ServiceLifetime.Scoped;

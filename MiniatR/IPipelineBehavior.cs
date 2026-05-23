@@ -1,4 +1,4 @@
-namespace MiniatR.Abstractions;
+namespace MiniatR;
 
 public delegate Task<TResponse> PipelineDelegate<TResponse>();
 

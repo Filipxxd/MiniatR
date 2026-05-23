@@ -1,4 +1,4 @@
-using MiniatR.Abstractions;
+using MiniatR;
 
 namespace MiniatR.Tests.Fixtures;
 

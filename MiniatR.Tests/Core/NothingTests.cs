@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using MiniatR.Abstractions;
+using MiniatR;
 
 namespace MiniatR.Tests.Core;
 
