@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.png" alt="MiniatR" width="128" />
+</p>
+
 # MiniatR
 
 Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.
