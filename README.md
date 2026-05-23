@@ -1,6 +1,6 @@
 # MiniatR
 
-A lightweight mediator library for .NET. Simple request/response dispatching with pipeline behaviors — nothing more, nothing less.
+A lightweight mediator library for .NET. Simple request/response dispatching with pipeline behaviors.
 
 ## Features
 
