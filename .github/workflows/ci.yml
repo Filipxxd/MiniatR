@@ -25,14 +25,19 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Test
+    - name: Test with coverage
       run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v6
+    - name: Generate coverage report
+      run: |
+        dotnet tool install -g dotnet-reportgenerator-globaltool
+        reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
       with:
-        fail_ci_if_error: false
-      continue-on-error: true
+        name: coverage-report
+        path: coverage-report
 
   deploy-nuget:
     name: Deploy to NuGet
@@ -52,7 +57,7 @@ jobs:
       run: dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 
     - name: Upload package artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nuget-package
         path: ./nupkg/*.nupkg
