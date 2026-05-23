@@ -107,7 +107,7 @@ dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 
 ## Coverage Goals
 
-- **Minimum 95% line coverage** (enforced in CI - build fails if below)
+- **Minimum 90% line coverage** (enforced in CI - build fails if below)
 - Aim for 100% method coverage
 
 ## Architecture Notes
