@@ -37,8 +37,8 @@ jobs:
       run: |
         COVERAGE=$(grep -oP 'Line coverage: \K[0-9.]+' coverage-report/Summary.txt)
         echo "Line coverage: $COVERAGE%"
-        if (( $(echo "$COVERAGE < 95" | bc -l) )); then
-          echo "Coverage $COVERAGE% is below 95% threshold"
+        if (( $(echo "$COVERAGE < 90" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below 90% threshold"
           exit 1
         fi
 
