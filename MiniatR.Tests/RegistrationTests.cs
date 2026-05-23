@@ -1,6 +1,7 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR;
+using MiniatR.Exceptions;
 using MiniatR.Extensions;
 using MiniatR.Tests.Fixtures;
 
@@ -135,5 +136,76 @@ public sealed class RegistrationTests
         var result = await sender.Send(new DependencyQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         result.Value.Should().Be("From Dependency");
+    }
+
+    [Fact]
+    public void DuplicateHandlers_ThrowsDuplicateHandlerException()
+    {
+        var services = new ServiceCollection();
+        var assembly = typeof(GetUserQuery).Assembly;
+
+        var ex = Assert.Throws<DuplicateHandlerException>(() =>
+            services.AddMiniatR(cfg => cfg
+                .RegisterServicesFromAssembly(assembly)
+                .RegisterServicesFromAssembly(assembly)));
+
+        ex.RequestType.Should().Be(typeof(GetUserQuery));
+        ex.HandlerTypes.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void RegisterServicesFromAssembly_RegistersHandlers()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetUserQuery).Assembly));
+        var provider = services.BuildServiceProvider();
+
+        var handler = provider.GetService<IRequestHandler<GetUserQuery, UserResponse>>();
+
+        handler.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData(ServiceLifetime.Scoped)]
+    [InlineData(ServiceLifetime.Transient)]
+    [InlineData(ServiceLifetime.Singleton)]
+    public void WithBehaviorLifetime_RegistersWithCorrectLifetime(ServiceLifetime lifetime)
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .WithBehaviorLifetime(lifetime)
+            .AddBehavior<GetUserQuery, UserResponse, LoggingBehavior<GetUserQuery, UserResponse>>());
+
+        var descriptor = services.First(s => s.ServiceType == typeof(IPipelineBehavior<GetUserQuery, UserResponse>));
+
+        descriptor.Lifetime.Should().Be(lifetime);
+    }
+
+    [Fact]
+    public void AddBehavior_WithType_RegistersBehavior()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .AddBehavior(typeof(LoggingBehavior<,>)));
+
+        var descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IPipelineBehavior<,>));
+
+        descriptor.Should().NotBeNull();
+        descriptor!.ImplementationType.Should().Be(typeof(LoggingBehavior<,>));
+    }
+
+    [Fact]
+    public void AddBehavior_Generic_RegistersBehavior()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .AddBehavior<LoggingBehavior<GetUserQuery, UserResponse>>());
+
+        var descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IPipelineBehavior<,>));
+
+        descriptor.Should().NotBeNull();
     }
 }

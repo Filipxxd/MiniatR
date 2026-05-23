@@ -48,6 +48,20 @@ public sealed class SenderTests
         var ex = await Assert.ThrowsAsync<HandlerNotFoundException>(() => sender.Send(new UnregisteredQuery(), TestContext.Current.CancellationToken));
 
         ex.RequestType.Should().Be(typeof(UnregisteredQuery));
+        ex.ResponseType.Should().Be(typeof(string));
+        ex.Message.Should().Contain("IRequestHandler<UnregisteredQuery, String>");
+    }
+
+    [Fact]
+    public async Task Send_NoVoidHandler_ThrowsHandlerNotFoundException()
+    {
+        var sender = CreateSender();
+
+        var ex = await Assert.ThrowsAsync<HandlerNotFoundException>(() => sender.Send(new UnregisteredCommand(), TestContext.Current.CancellationToken));
+
+        ex.RequestType.Should().Be(typeof(UnregisteredCommand));
+        ex.ResponseType.Should().BeNull();
+        ex.Message.Should().Contain("IRequestHandler<UnregisteredCommand>");
     }
 
     [Fact]

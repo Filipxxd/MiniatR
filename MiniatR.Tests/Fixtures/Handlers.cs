@@ -29,6 +29,14 @@ public sealed class SlowQueryHandler : IRequestHandler<SlowQuery, string>
     }
 }
 
+public sealed class SlowCommandHandler : IRequestHandler<SlowCommand>
+{
+    public async Task Handle(SlowCommand request, CancellationToken cancellationToken)
+    {
+        await Task.Delay(request.DelayMs, cancellationToken);
+    }
+}
+
 public sealed class NullableQueryHandler : IRequestHandler<NullableQuery, string?>
 {
     public Task<string?> Handle(NullableQuery request, CancellationToken cancellationToken)
