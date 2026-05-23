@@ -98,6 +98,47 @@ public sealed class SenderTests
         result.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(5, 10)]
+    [InlineData(-3, -6)]
+    [InlineData(int.MaxValue / 2, int.MaxValue - 1)]
+    public async Task Send_ValueTypeResponse_ReturnsCorrectValue(int input, int expected)
+    {
+        var sender = CreateSender();
+
+        var result = await sender.Send(new ValueTypeQuery(input), TestContext.Current.CancellationToken);
+
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task Send_HandlerConstructorThrows_PropagatesException()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<ThrowingConstructorQuery>());
+        var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sender.Send(new ThrowingConstructorQuery(), TestContext.Current.CancellationToken));
+
+        ex.Message.Should().Be("Constructor failed");
+    }
+
+    [Fact]
+    public async Task Send_ServiceProviderDisposed_ThrowsObjectDisposedException()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<GetUserQuery>());
+        var provider = services.BuildServiceProvider();
+        var sender = provider.GetRequiredService<ISender>();
+
+        provider.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => sender.Send(new GetUserQuery(Guid.NewGuid()), TestContext.Current.CancellationToken));
+    }
+
     private static ISender CreateSender()
     {
         var services = new ServiceCollection();

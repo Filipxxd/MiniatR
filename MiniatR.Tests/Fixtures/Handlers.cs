@@ -67,3 +67,25 @@ public sealed class HandlerWithDependencies(ITestDependency dependency) : IReque
 
 public interface ITestDependency { string GetValue(); }
 public sealed class TestDependency : ITestDependency { public string GetValue() => "From Dependency"; }
+
+public sealed class ValueTypeQueryHandler : IRequestHandler<ValueTypeQuery, int>
+{
+    public Task<int> Handle(ValueTypeQuery request, CancellationToken cancellationToken)
+        => Task.FromResult(request.Value * 2);
+}
+
+public sealed class ThrowingConstructorQueryHandler : IRequestHandler<ThrowingConstructorQuery, string>
+{
+    public ThrowingConstructorQueryHandler()
+        => throw new InvalidOperationException("Constructor failed");
+
+    public Task<string> Handle(ThrowingConstructorQuery request, CancellationToken cancellationToken)
+        => Task.FromResult("never reached");
+}
+
+public sealed class StressTestQueryHandler : IRequestHandler<StressTestQuery, string>
+{
+    public Task<string> Handle(StressTestQuery request, CancellationToken cancellationToken)
+        => Task.FromResult("success");
+}
+

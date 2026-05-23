@@ -14,3 +14,6 @@ public sealed record UnregisteredQuery() : IRequest<string>;
 public sealed record UnregisteredCommand() : IRequest;
 public sealed record DependencyQuery(Guid Id) : IRequest<DependencyResponse>;
 public sealed record DependencyResponse(Guid Id, string Value);
+public sealed record ValueTypeQuery(int Value) : IRequest<int>;
+public sealed record ThrowingConstructorQuery() : IRequest<string>;
+public sealed record StressTestQuery() : IRequest<string>;

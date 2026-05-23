@@ -4,8 +4,19 @@ using MiniatR.Exceptions;
 
 namespace MiniatR.Extensions;
 
+/// <summary>
+/// Extension methods for registering MiniatR services with dependency injection.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers MiniatR services including the <see cref="ISender"/> and all handlers from configured assemblies.
+    /// </summary>
+    /// <param name="services">The service collection to add services to.</param>
+    /// <param name="configure">Action to configure MiniatR options including assembly registration and lifetimes.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no assemblies are registered.</exception>
+    /// <exception cref="DuplicateHandlerException">Thrown when multiple handlers are found for the same request type.</exception>
     public static IServiceCollection AddMiniatR(this IServiceCollection services, Action<MiniatRConfiguration> configure)
     {
         var config = new MiniatRConfiguration(services);
@@ -51,14 +62,12 @@ public static class ServiceCollectionExtensions
         var duplicates = handlers
             .GroupBy(h => h.Interface)
             .Where(g => g.Count() > 1)
+            .Select(g => new DuplicateRegistration(
+                g.Key.GetGenericArguments()[0],
+                g.Select(h => h.Implementation).ToArray()))
             .ToList();
 
         if (duplicates.Count > 0)
-        {
-            var first = duplicates[0];
-            var requestType = first.Key.GetGenericArguments()[0];
-            var handlerTypes = first.Select(h => h.Implementation).ToArray();
-            throw new DuplicateHandlerException(requestType, handlerTypes);
-        }
+            throw new DuplicateHandlerException(duplicates);
     }
 }
