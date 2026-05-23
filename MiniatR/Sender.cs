@@ -1,5 +1,3 @@
-using System.Reflection;
-using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.DependencyInjection;
 using MiniatR.Exceptions;
 
@@ -9,7 +7,7 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
 
-    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
@@ -24,7 +22,7 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
         var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
         var behaviors = _serviceProvider.GetServices(behaviorType).Cast<object>().ToList();
 
-        return ExecutePipeline<TResponse>(request, handler, behaviors, cancellationToken);
+        return await ExecutePipeline<TResponse>(requestType, responseType, request, handler, behaviors, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task Send(IRequest request, CancellationToken cancellationToken = default)
@@ -41,102 +39,70 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
         var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(Nothing));
         var behaviors = _serviceProvider.GetServices(behaviorType).Cast<object>().ToList();
 
-        await ExecuteVoidPipeline(request, handler, behaviors, cancellationToken);
+        await ExecuteVoidPipeline(requestType, request, handler, behaviors, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<TResponse> ExecutePipeline<TResponse>(
+        Type requestType,
+        Type responseType,
         object request,
         object handler,
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        PipelineDelegate<TResponse> handlerDelegate = ct =>
+        var handlerInvoker = InvokerCache.GetHandlerInvoker<TResponse>(requestType, responseType);
+
+        PipelineDelegate<TResponse> pipeline = ct =>
         {
             ct.ThrowIfCancellationRequested();
-            return InvokeHandler<TResponse>(handler, request, ct);
+            return handlerInvoker(handler, request, ct);
         };
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
-            var current = handlerDelegate;
-            handlerDelegate = ct =>
+            var behaviorInvoker = InvokerCache.GetBehaviorInvoker<TResponse>(behavior.GetType(), requestType, responseType);
+            var current = pipeline;
+            var captured = behavior;
+
+            pipeline = ct =>
             {
                 ct.ThrowIfCancellationRequested();
-                return InvokeBehavior<TResponse>(behavior, request, current, ct);
+                return behaviorInvoker(captured, request, current, ct);
             };
         }
 
-        return await handlerDelegate(cancellationToken);
-    }
-
-    private static Task<TResponse> InvokeHandler<TResponse>(object handler, object request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var method = handler.GetType().GetMethod("Handle")!;
-            return (Task<TResponse>)method.Invoke(handler, [request, cancellationToken])!;
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-            throw;
-        }
-    }
-
-    private static Task<TResponse> InvokeBehavior<TResponse>(
-        object behavior,
-        object request,
-        PipelineDelegate<TResponse> next,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var method = behavior.GetType().GetMethod("Handle")!;
-            return (Task<TResponse>)method.Invoke(behavior, [request, next, cancellationToken])!;
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-            throw;
-        }
+        return await pipeline(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task ExecuteVoidPipeline(
+        Type requestType,
         object request,
         object handler,
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        PipelineDelegate<Nothing> handlerDelegate = async ct =>
+        var handlerInvoker = InvokerCache.GetVoidHandlerInvoker(requestType);
+
+        PipelineDelegate<Nothing> pipeline = async ct =>
         {
             ct.ThrowIfCancellationRequested();
-            await InvokeVoidHandler(handler, request, ct);
+            await handlerInvoker(handler, request, ct).ConfigureAwait(false);
             return Nothing.Value;
         };
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
-            var current = handlerDelegate;
-            handlerDelegate = ct =>
+            var behaviorInvoker = InvokerCache.GetBehaviorInvoker<Nothing>(behavior.GetType(), requestType, typeof(Nothing));
+            var current = pipeline;
+            var captured = behavior;
+
+            pipeline = ct =>
             {
                 ct.ThrowIfCancellationRequested();
-                return InvokeBehavior(behavior, request, current, ct);
+                return behaviorInvoker(captured, request, current, ct);
             };
         }
 
-        await handlerDelegate(cancellationToken);
-    }
-
-    private static async Task InvokeVoidHandler(object handler, object request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var method = handler.GetType().GetMethod("Handle")!;
-            await (Task)method.Invoke(handler, [request, cancellationToken])!;
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-        }
+        await pipeline(cancellationToken).ConfigureAwait(false);
     }
 }
