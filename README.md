@@ -75,7 +75,7 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Handling {typeof(TRequest).Name}");
-        var response = await next();
+        var response = await next(cancellationToken);
         Console.WriteLine($"Handled {typeof(TRequest).Name}");
         return response;
     }

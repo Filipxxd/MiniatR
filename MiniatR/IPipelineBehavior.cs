@@ -1,6 +1,6 @@
 namespace MiniatR;
 
-public delegate Task<TResponse> PipelineDelegate<TResponse>();
+public delegate Task<TResponse> PipelineDelegate<TResponse>(CancellationToken cancellationToken);
 
 public interface IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
