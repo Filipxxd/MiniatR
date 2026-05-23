@@ -1,6 +1,6 @@
 # MiniatR
 
-Minimal mediator implementation for .NET.
+Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.
 
 ## Installation
 
@@ -11,7 +11,7 @@ dotnet add package MiniatR
 ## Quick Start
 
 ```csharp
-using MiniatR.Abstractions;
+using MiniatR;
 using MiniatR.Extensions;
 
 // Define request and handler
@@ -20,9 +20,9 @@ public sealed record UserResponse(Guid Id, string Name);
 
 public sealed class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserResponse>
 {
-    public async Task<UserResponse> Handle(GetUserQuery request, CancellationToken cancellationToken)
+    public Task<UserResponse> Handle(GetUserQuery request, CancellationToken cancellationToken)
     {
-        return new UserResponse(request.Id, "John Doe");
+        return Task.FromResult(new UserResponse(request.Id, "John Doe"));
     }
 }
 
@@ -30,13 +30,9 @@ public sealed class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserResp
 services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<GetUserQuery>());
 
 // Use
-public class MyService
+public class MyService(ISender sender)
 {
-    private readonly ISender _sender;
-    public MyService(ISender sender) => _sender = sender;
-
-    public async Task<UserResponse> GetUser(Guid id)
-        => await _sender.Send(new GetUserQuery(id));
+    public Task<UserResponse> GetUser(Guid id) => sender.Send(new GetUserQuery(id));
 }
 ```
 
@@ -47,14 +43,26 @@ public sealed record DeleteUserCommand(Guid Id) : IRequest;
 
 public sealed class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand>
 {
-    public async Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
+    public Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
         // No return needed
+        return Task.CompletedTask;
     }
 }
 
 await sender.Send(new DeleteUserCommand(userId));
 ```
+
+## Cancellation Support
+
+All requests support cancellation tokens. The pipeline checks for cancellation at each step.
+
+```csharp
+using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+var result = await sender.Send(new SlowQuery(), cts.Token);
+```
+
+If cancelled, throws `OperationCanceledException` before execution or `TaskCanceledException` during.
 
 ## Pipeline Behaviors
 
@@ -71,10 +79,10 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     }
 }
 
-// Register directly with DI
+// Register globally
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-// Or via config for closed generics
+// Or for specific request types
 services.AddMiniatR(cfg => cfg
     .RegisterServicesFromAssemblyContaining<GetUserQuery>()
     .AddBehavior<GetUserQuery, UserResponse, SpecificBehavior>());
@@ -88,15 +96,6 @@ services.AddMiniatR(cfg => cfg
     .RegisterServicesFromAssembly(typeof(OtherHandler).Assembly)
     .WithHandlerLifetime(ServiceLifetime.Transient)
     .WithBehaviorLifetime(ServiceLifetime.Scoped));
-```
-
-## Project Structure
-
-```
-MiniatR/
-├── Abstractions/    # IRequest, IRequestHandler, ISender, IMediator, IPipelineBehavior, Nothing, Exceptions
-├── Core/            # Mediator implementation
-└── Extensions/      # ServiceCollectionExtensions, MiniatRConfiguration
 ```
 
 ## License

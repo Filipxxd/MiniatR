@@ -11,9 +11,7 @@ public static class ServiceCollectionExtensions
         var config = new MiniatRConfiguration(services);
         configure(config);
 
-        services.AddScoped<Mediator>();
-        services.AddScoped<ISender>(sp => sp.GetRequiredService<Mediator>());
-        services.AddScoped<IMediator>(sp => sp.GetRequiredService<Mediator>());
+        services.AddScoped<ISender, Sender>();
 
         var allHandlers = new List<(Type Interface, Type Implementation)>();
 
