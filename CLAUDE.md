@@ -85,6 +85,14 @@ dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 
 ## Coverage Goals
 
-- Aim for >95% line coverage
-- 100% method coverage
+- **Minimum 95% line coverage** (enforced in CI - build fails if below)
+- Aim for 100% method coverage
 - Uncoverable lines: `throw;` after `ExceptionDispatchInfo.Capture().Throw()` (compiler requirement, unreachable)
+
+## Architecture Notes
+
+- All public types are in the root `MiniatR` namespace
+- Extensions are in `MiniatR.Extensions` namespace
+- Handlers are auto-discovered from registered assemblies
+- Pipeline behaviors wrap handlers in registration order (first registered = outermost)
+- Cancellation is checked at pipeline entry and before each behavior/handler execution
