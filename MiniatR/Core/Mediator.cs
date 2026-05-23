@@ -49,7 +49,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        RequestHandlerDelegate<TResponse> handlerDelegate = () =>
+        PipelineDelegate<TResponse> handlerDelegate = () =>
             InvokeHandler<TResponse>(handler, request, cancellationToken);
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
@@ -78,7 +78,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
     private static Task<TResponse> InvokeBehavior<TResponse>(
         object behavior,
         object request,
-        RequestHandlerDelegate<TResponse> next,
+        PipelineDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
         try
@@ -99,7 +99,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        RequestHandlerDelegate<Nothing> handlerDelegate = async () =>
+        PipelineDelegate<Nothing> handlerDelegate = async () =>
         {
             await InvokeVoidHandler(handler, request, cancellationToken);
             return Nothing.Value;

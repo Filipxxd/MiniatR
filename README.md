@@ -62,7 +62,7 @@ await sender.Send(new DeleteUserCommand(userId));
 public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Handling {typeof(TRequest).Name}");
         var response = await next();
@@ -94,7 +94,7 @@ services.AddMiniatR(cfg => cfg
 
 ```
 MiniatR/
-├── Abstractions/    # IRequest, IRequestHandler, ISender, IMediator, IPipelineBehavior, Void, Exceptions
+├── Abstractions/    # IRequest, IRequestHandler, ISender, IMediator, IPipelineBehavior, Nothing, Exceptions
 ├── Core/            # Mediator implementation
 └── Extensions/      # ServiceCollectionExtensions, MiniatRConfiguration
 ```

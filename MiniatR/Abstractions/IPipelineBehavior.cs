@@ -1,9 +1,9 @@
 namespace MiniatR.Abstractions;
 
-public delegate Task<TResponse> RequestHandlerDelegate<TResponse>();
+public delegate Task<TResponse> PipelineDelegate<TResponse>();
 
 public interface IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken);
+    Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken);
 }

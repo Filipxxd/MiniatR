@@ -7,7 +7,7 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 {
     public static List<string> Log { get; } = [];
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Log.Add($"Before: {typeof(TRequest).Name}");
         var response = await next();
@@ -23,7 +23,7 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
 {
     public static List<string> Log { get; } = [];
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Log.Add($"Validating: {typeof(TRequest).Name}");
         var response = await next();
@@ -41,7 +41,7 @@ public sealed class ShortCircuitBehavior<TRequest, TResponse> : IPipelineBehavio
     public static TResponse? ShortCircuitResponse { get; set; }
     public static bool HandlerWasCalled { get; private set; }
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         if (ShouldShortCircuit && ShortCircuitResponse is not null)
             return ShortCircuitResponse;
@@ -63,7 +63,7 @@ public sealed class ThrowingBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 {
     public static bool ShouldThrow { get; set; }
 
-    public Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         if (ShouldThrow)
             throw new InvalidOperationException("Behavior threw an exception");
@@ -79,7 +79,7 @@ public sealed class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 {
     public static List<string> Log { get; } = [];
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Log.Add($"Cache check: {typeof(TRequest).Name}");
         var response = await next();
@@ -94,7 +94,7 @@ public sealed class GetUserQueryLoggingBehavior : IPipelineBehavior<GetUserQuery
 {
     public static List<string> Log { get; } = [];
 
-    public async Task<UserResponse> Handle(GetUserQuery request, RequestHandlerDelegate<UserResponse> next, CancellationToken cancellationToken)
+    public async Task<UserResponse> Handle(GetUserQuery request, PipelineDelegate<UserResponse> next, CancellationToken cancellationToken)
     {
         Log.Add($"GetUserQuery specific behavior: {request.Id}");
         var response = await next();
@@ -115,7 +115,7 @@ public sealed class BehaviorWithDependencies<TRequest, TResponse> : IPipelineBeh
         Dependency = dependency;
     }
 
-    public Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         _ = Dependency.GetValue();
         return next();
@@ -127,7 +127,7 @@ public sealed class OrderTrackingBehavior1<TRequest, TResponse> : IPipelineBehav
 {
     public static List<string> ExecutionOrder { get; } = [];
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ExecutionOrder.Add("Behavior1-Before");
         var response = await next();
@@ -143,7 +143,7 @@ public sealed class OrderTrackingBehavior2<TRequest, TResponse> : IPipelineBehav
 {
     public static List<string> ExecutionOrder => OrderTrackingBehavior1<TRequest, TResponse>.ExecutionOrder;
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ExecutionOrder.Add("Behavior2-Before");
         var response = await next();
@@ -157,7 +157,7 @@ public sealed class OrderTrackingBehavior3<TRequest, TResponse> : IPipelineBehav
 {
     public static List<string> ExecutionOrder => OrderTrackingBehavior1<TRequest, TResponse>.ExecutionOrder;
 
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ExecutionOrder.Add("Behavior3-Before");
         var response = await next();
