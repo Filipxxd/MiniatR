@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using MiniatR;
 using MiniatR.Extensions;
 using MiniatR.Tests.Fixtures;
 
