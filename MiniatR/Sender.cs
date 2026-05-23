@@ -5,13 +5,14 @@ using MiniatR.Exceptions;
 
 namespace MiniatR;
 
-internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
+internal sealed class Sender(IServiceProvider serviceProvider) : ISender
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var requestType = request.GetType();
         var responseType = typeof(TResponse);
@@ -29,6 +30,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
     public async Task Send(IRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var requestType = request.GetType();
 
@@ -49,12 +51,19 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         CancellationToken cancellationToken)
     {
         PipelineDelegate<TResponse> handlerDelegate = () =>
-            InvokeHandler<TResponse>(handler, request, cancellationToken);
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return InvokeHandler<TResponse>(handler, request, cancellationToken);
+        };
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
             var current = handlerDelegate;
-            handlerDelegate = () => InvokeBehavior<TResponse>(behavior, request, current, cancellationToken);
+            handlerDelegate = () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return InvokeBehavior<TResponse>(behavior, request, current, cancellationToken);
+            };
         }
 
         return await handlerDelegate();
@@ -100,6 +109,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
     {
         PipelineDelegate<Nothing> handlerDelegate = async () =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await InvokeVoidHandler(handler, request, cancellationToken);
             return Nothing.Value;
         };
@@ -107,7 +117,11 @@ internal sealed class Mediator(IServiceProvider serviceProvider) : IMediator
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
             var current = handlerDelegate;
-            handlerDelegate = () => InvokeBehavior(behavior, request, current, cancellationToken);
+            handlerDelegate = () =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return InvokeBehavior(behavior, request, current, cancellationToken);
+            };
         }
 
         await handlerDelegate();
