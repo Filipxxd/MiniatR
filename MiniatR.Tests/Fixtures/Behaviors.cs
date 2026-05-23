@@ -11,7 +11,7 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Log.Add($"Before: {typeof(TRequest).Name}");
-        var response = await next();
+        var response = await next(cancellationToken);
         Log.Add($"After: {typeof(TRequest).Name}");
         return response;
     }
@@ -37,7 +37,7 @@ public sealed class ShortCircuitBehavior<TRequest, TResponse> : IPipelineBehavio
             return ShortCircuitResponse;
 
         HandlerWasCalled = true;
-        return await next();
+        return await next(cancellationToken);
     }
 }
 
@@ -48,7 +48,7 @@ public sealed class ThrowingBehavior<TRequest, TResponse> : IPipelineBehavior<TR
     public static void Reset() => ShouldThrow = false;
 
     public Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
-        => ShouldThrow ? throw new InvalidOperationException("Behavior threw an exception") : next();
+        => ShouldThrow ? throw new InvalidOperationException("Behavior threw an exception") : next(cancellationToken);
 }
 
 public sealed class OrderTrackingBehavior<TRequest, TResponse>(int order) : IPipelineBehavior<TRequest, TResponse>
@@ -60,7 +60,7 @@ public sealed class OrderTrackingBehavior<TRequest, TResponse>(int order) : IPip
     public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         ExecutionOrder.Add($"Behavior{order}-Before");
-        var response = await next();
+        var response = await next(cancellationToken);
         ExecutionOrder.Add($"Behavior{order}-After");
         return response;
     }
@@ -72,6 +72,6 @@ public sealed class BehaviorWithDependencies<TRequest, TResponse>(ITestDependenc
     public Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         _ = dependency.GetValue();
-        return next();
+        return next(cancellationToken);
     }
 }

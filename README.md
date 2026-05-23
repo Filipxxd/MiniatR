@@ -1,6 +1,8 @@
-# MiniatR
-
-Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.
+<p align="center">
+  <img src="icon.png" alt="MiniatR" width="100" />
+  <h1 align="center">MiniatR</h1>
+  <p align="center">Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.</p>
+</p>
 
 ## Installation
 
@@ -73,7 +75,7 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Handling {typeof(TRequest).Name}");
-        var response = await next();
+        var response = await next(cancellationToken);
         Console.WriteLine($"Handled {typeof(TRequest).Name}");
         return response;
     }

@@ -50,23 +50,23 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        PipelineDelegate<TResponse> handlerDelegate = () =>
+        PipelineDelegate<TResponse> handlerDelegate = ct =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            return InvokeHandler<TResponse>(handler, request, cancellationToken);
+            ct.ThrowIfCancellationRequested();
+            return InvokeHandler<TResponse>(handler, request, ct);
         };
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
             var current = handlerDelegate;
-            handlerDelegate = () =>
+            handlerDelegate = ct =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                return InvokeBehavior<TResponse>(behavior, request, current, cancellationToken);
+                ct.ThrowIfCancellationRequested();
+                return InvokeBehavior<TResponse>(behavior, request, current, ct);
             };
         }
 
-        return await handlerDelegate();
+        return await handlerDelegate(cancellationToken);
     }
 
     private static Task<TResponse> InvokeHandler<TResponse>(object handler, object request, CancellationToken cancellationToken)
@@ -107,24 +107,24 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
         List<object> behaviors,
         CancellationToken cancellationToken)
     {
-        PipelineDelegate<Nothing> handlerDelegate = async () =>
+        PipelineDelegate<Nothing> handlerDelegate = async ct =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await InvokeVoidHandler(handler, request, cancellationToken);
+            ct.ThrowIfCancellationRequested();
+            await InvokeVoidHandler(handler, request, ct);
             return Nothing.Value;
         };
 
         foreach (var behavior in Enumerable.Reverse(behaviors))
         {
             var current = handlerDelegate;
-            handlerDelegate = () =>
+            handlerDelegate = ct =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                return InvokeBehavior(behavior, request, current, cancellationToken);
+                ct.ThrowIfCancellationRequested();
+                return InvokeBehavior(behavior, request, current, ct);
             };
         }
 
-        await handlerDelegate();
+        await handlerDelegate(cancellationToken);
     }
 
     private static async Task InvokeVoidHandler(object handler, object request, CancellationToken cancellationToken)
