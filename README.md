@@ -1,10 +1,8 @@
 <p align="center">
-  <img src="icon.png" alt="MiniatR" width="128" />
+  <img src="icon.png" alt="MiniatR" width="100" />
+  <h1 align="center">MiniatR</h1>
+  <p align="center">Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.</p>
 </p>
-
-# MiniatR
-
-Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.
 
 ## Installation
 
