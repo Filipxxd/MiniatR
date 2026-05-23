@@ -5,6 +5,7 @@ using MiniatR.Tests.Fixtures;
 
 namespace MiniatR.Tests;
 
+[Collection("Sequential")]
 public sealed class PipelineTests : IDisposable
 {
     public PipelineTests()
