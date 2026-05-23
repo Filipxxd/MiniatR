@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <PackageId>MiniatR</PackageId>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <Authors>Filip</Authors>
     <Description>Minimal mediator implementation for .NET.</Description>
     <PackageTags>mediator;cqrs</PackageTags>

@@ -11,6 +11,7 @@ MiniatR/
 │   ├── IRequestHandler.cs      # Handler interfaces
 │   ├── ISender.cs              # Public interface for sending requests
 │   ├── Sender.cs               # Internal ISender implementation
+│   ├── InvokerCache.cs         # Compiled expression tree cache for handler/behavior invocation
 │   ├── IPipelineBehavior.cs    # Pipeline behavior interface and delegate
 │   ├── Nothing.cs              # Unit type for void requests
 │   ├── Exceptions/
@@ -75,6 +76,19 @@ cat coverage-report/Summary.txt
 dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 ```
 
+## Code Style
+
+### Comments
+- **NO code comments** (`//` style comments are forbidden in source code)
+- **XML comments** (`///`) are allowed ONLY on public classes and their public members
+- Internal/private code should be self-documenting through clear naming
+
+### General
+- Keep code minimal and focused
+- Prefer expression-bodied members where appropriate
+- Use primary constructors
+- Use `ConfigureAwait(false)` on all async calls
+
 ## Test Guidelines
 
 - Tests use xUnit v3 with `TestContext.Current.CancellationToken`
@@ -87,7 +101,6 @@ dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 
 - **Minimum 95% line coverage** (enforced in CI - build fails if below)
 - Aim for 100% method coverage
-- Uncoverable lines: `throw;` after `ExceptionDispatchInfo.Capture().Throw()` (compiler requirement, unreachable)
 
 ## Architecture Notes
 
@@ -96,3 +109,5 @@ dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 - Handlers are auto-discovered from registered assemblies
 - Pipeline behaviors wrap handlers in registration order (first registered = outermost)
 - Cancellation is checked at pipeline entry and before each behavior/handler execution
+- Handler/behavior invocation uses compiled expression trees (cached per request type) for performance
+- Behavior types are validated at registration time to ensure they implement `IPipelineBehavior<,>`

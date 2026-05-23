@@ -1,6 +1,13 @@
 # MiniatR
 
-Lightweight mediator for .NET — just requests, handlers, and pipeline behaviors. Nothing more.
+A lightweight mediator library for .NET. Simple request/response dispatching with pipeline behaviors — nothing more, nothing less.
+
+## Features
+
+- **Minimal API** — Just `IRequest`, `IRequestHandler`, and `ISender`
+- **Pipeline behaviors** — Add cross-cutting concerns like logging, validation, caching
+- **High performance** — Compiled expression trees, no runtime reflection after first call
+- **Full async/cancellation support**
 
 ## Installation
 
@@ -8,69 +15,65 @@ Lightweight mediator for .NET — just requests, handlers, and pipeline behavior
 dotnet add package MiniatR
 ```
 
-## Quick Start
+## Usage
+
+### Define a Request and Handler
 
 ```csharp
-using MiniatR;
-using MiniatR.Extensions;
+public sealed record GetUser(Guid Id) : IRequest<User>;
 
-// Define request and handler
-public sealed record GetUserQuery(Guid Id) : IRequest<UserResponse>;
-public sealed record UserResponse(Guid Id, string Name);
-
-public sealed class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserResponse>
+public sealed class GetUserHandler : IRequestHandler<GetUser, User>
 {
-    public Task<UserResponse> Handle(GetUserQuery request, CancellationToken cancellationToken)
+    public Task<User> Handle(GetUser request, CancellationToken cancellationToken)
     {
-        return Task.FromResult(new UserResponse(request.Id, "John Doe"));
+        return Task.FromResult(new User(request.Id, "John Doe"));
     }
-}
-
-// Register
-services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<GetUserQuery>());
-
-// Use
-public class MyService(ISender sender)
-{
-    public Task<UserResponse> GetUser(Guid id) => sender.Send(new GetUserQuery(id));
 }
 ```
 
-## Void Requests
+### Register Services
 
 ```csharp
-public sealed record DeleteUserCommand(Guid Id) : IRequest;
+services.AddMiniatR(cfg => cfg
+    .RegisterServicesFromAssemblyContaining<GetUser>());
+```
 
-public sealed class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand>
+### Send Requests
+
+```csharp
+public class UserService(ISender sender)
 {
-    public Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
+    public Task<User> GetUser(Guid id, CancellationToken ct = default)
+        => sender.Send(new GetUser(id), ct);
+}
+```
+
+### Void Requests
+
+```csharp
+public sealed record DeleteUser(Guid Id) : IRequest;
+
+public sealed class DeleteUserHandler : IRequestHandler<DeleteUser>
+{
+    public Task Handle(DeleteUser request, CancellationToken cancellationToken)
     {
-        // No return needed
         return Task.CompletedTask;
     }
 }
-
-await sender.Send(new DeleteUserCommand(userId));
 ```
 
-## Cancellation Support
+### Pipeline Behaviors
 
-All requests support cancellation tokens. The pipeline checks for cancellation at each step.
-
-```csharp
-using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-var result = await sender.Send(new SlowQuery(), cts.Token);
-```
-
-If cancelled, throws `OperationCanceledException` before execution or `TaskCanceledException` during.
-
-## Pipeline Behaviors
+Behaviors wrap request handling for cross-cutting concerns:
 
 ```csharp
 public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    public async Task<TResponse> Handle(TRequest request, PipelineDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(
+        TRequest request,
+        PipelineDelegate<TResponse> next,
+        CancellationToken cancellationToken)
     {
         Console.WriteLine($"Handling {typeof(TRequest).Name}");
         var response = await next(cancellationToken);
@@ -78,24 +81,24 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
         return response;
     }
 }
-
-// Register globally
-services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-
-// Or for specific request types
-services.AddMiniatR(cfg => cfg
-    .RegisterServicesFromAssemblyContaining<GetUserQuery>()
-    .AddBehavior<GetUserQuery, UserResponse, SpecificBehavior>());
 ```
-
-## Configuration
 
 ```csharp
 services.AddMiniatR(cfg => cfg
-    .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+    .RegisterServicesFromAssemblyContaining<GetUser>()
+    .AddBehavior(typeof(LoggingBehavior<,>)));
+```
+
+### Configuration Options
+
+```csharp
+services.AddMiniatR(cfg => cfg
+    .RegisterServicesFromAssemblyContaining<GetUser>()
     .RegisterServicesFromAssembly(typeof(OtherHandler).Assembly)
     .WithHandlerLifetime(ServiceLifetime.Transient)
-    .WithBehaviorLifetime(ServiceLifetime.Scoped));
+    .WithBehaviorLifetime(ServiceLifetime.Scoped)
+    .AddBehavior(typeof(LoggingBehavior<,>))
+    .AddBehavior<GetUser, User, CachingBehavior>());
 ```
 
 ## License

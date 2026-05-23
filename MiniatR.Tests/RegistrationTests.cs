@@ -208,4 +208,55 @@ public sealed class RegistrationTests
 
         descriptor.Should().NotBeNull();
     }
+
+    [Fact]
+    public void AddBehavior_OpenGeneric_RegistersBehavior()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .AddBehavior(typeof(LoggingBehavior<,>)));
+
+        var descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IPipelineBehavior<,>));
+
+        descriptor.Should().NotBeNull();
+        descriptor!.ImplementationType.Should().Be(typeof(LoggingBehavior<,>));
+    }
+
+    [Fact]
+    public void AddBehavior_InvalidType_ThrowsArgumentException()
+    {
+        var services = new ServiceCollection();
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddMiniatR(cfg => cfg
+                .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+                .AddBehavior(typeof(string))));
+
+        ex.Message.Should().Contain("does not implement IPipelineBehavior");
+    }
+
+    [Fact]
+    public void AddBehavior_InvalidOpenGenericType_ThrowsArgumentException()
+    {
+        var services = new ServiceCollection();
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddMiniatR(cfg => cfg
+                .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+                .AddBehavior(typeof(List<>))));
+
+        ex.Message.Should().Contain("does not implement IPipelineBehavior");
+    }
+
+    [Fact]
+    public void AddBehavior_NullType_ThrowsArgumentNullException()
+    {
+        var services = new ServiceCollection();
+
+        Assert.Throws<ArgumentNullException>(() =>
+            services.AddMiniatR(cfg => cfg
+                .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+                .AddBehavior(null!)));
+    }
 }
