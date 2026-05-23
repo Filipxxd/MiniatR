@@ -12,9 +12,16 @@ public sealed class NothingTests
         var b = new Nothing();
 
         a.Equals(b).Should().BeTrue();
+        a.Equals((object)b).Should().BeTrue();
+        a.Equals("not nothing").Should().BeFalse();
+        a.Equals(null).Should().BeFalse();
         (a == b).Should().BeTrue();
         (a != b).Should().BeFalse();
     }
+
+    [Fact]
+    public void CompareTo_ReturnsZero()
+        => Nothing.Value.CompareTo(new Nothing()).Should().Be(0);
 
     [Fact]
     public void GetHashCode_ReturnsZero()

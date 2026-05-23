@@ -29,6 +29,29 @@ public sealed class CancellationTests
         await Assert.ThrowsAsync<TaskCanceledException>(() => task);
     }
 
+    [Fact]
+    public async Task SendVoid_CancelledToken_ThrowsOperationCancelledException()
+    {
+        var sender = CreateSender();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sender.Send(new SlowCommand(100), cts.Token));
+    }
+
+    [Fact]
+    public async Task SendVoid_CancellationDuringExecution_ThrowsTaskCancelledException()
+    {
+        var sender = CreateSender();
+        using var cts = new CancellationTokenSource();
+
+        var task = sender.Send(new SlowCommand(5000), cts.Token);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        cts.Cancel();
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => task);
+    }
+
     private static ISender CreateSender()
     {
         var services = new ServiceCollection();

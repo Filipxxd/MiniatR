@@ -31,10 +31,20 @@ jobs:
     - name: Generate coverage report
       run: |
         dotnet tool install -g dotnet-reportgenerator-globaltool
-        reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
+        reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:"Html;TextSummary"
+
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(grep -oP 'Line coverage: \K[0-9.]+' coverage-report/Summary.txt)
+        echo "Line coverage: $COVERAGE%"
+        if (( $(echo "$COVERAGE < 95" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below 95% threshold"
+          exit 1
+        fi
 
     - name: Upload coverage report
       uses: actions/upload-artifact@v7
+      if: always()
       with:
         name: coverage-report
         path: coverage-report

@@ -1,7 +1,10 @@
 [Bb]in/
 [Oo]bj/
 .vs/
+.vscode/
 *.user
 *.nupkg
 *.snupkg
 .claude
+coverage-report
+TestResults*
