@@ -5,7 +5,7 @@ A lightweight mediator library for .NET. Simple request/response dispatching wit
 ## Features
 
 - **Minimal API** — Just `IRequest`, `IRequestHandler`, and `ISender`
-- **Pipeline behaviors** — Add cross-cutting concerns like logging, validation, caching
+- **Pipeline behaviors** — Add cross-cutting concerns like logging, validation, caching, retry
 - **High performance** — Compiled expression trees, no runtime reflection after first call
 - **Full async/cancellation support**
 
@@ -100,6 +100,37 @@ services.AddMiniatR(cfg => cfg
     .AddBehavior(typeof(LoggingBehavior<,>))
     .AddBehavior<GetUser, User, CachingBehavior>());
 ```
+
+### Service Lifetimes
+
+Configure lifetimes globally or per-behavior:
+
+```csharp
+services.AddMiniatR(cfg => cfg
+    .RegisterServicesFromAssemblyContaining<GetUser>()
+
+    // Global defaults (both default to Scoped)
+    .WithHandlerLifetime(ServiceLifetime.Scoped)
+    .WithBehaviorLifetime(ServiceLifetime.Scoped)
+
+    // Behaviors using global default
+    .AddBehavior(typeof(LoggingBehavior<,>))
+    .AddBehavior<ValidationBehavior>()
+
+    // Per-behavior lifetime overrides
+    .AddBehavior(typeof(CachingBehavior<,>), ServiceLifetime.Singleton)
+    .AddBehavior<MetricsBehavior>(ServiceLifetime.Singleton)
+    .AddBehavior<GetUser, User, AuditBehavior>(ServiceLifetime.Transient));
+```
+
+| Method | Description |
+|--------|-------------|
+| `WithHandlerLifetime(lifetime)` | Sets lifetime for all handlers |
+| `WithBehaviorLifetime(lifetime)` | Sets default lifetime for behaviors |
+| `AddBehavior(type)` | Registers behavior with default lifetime |
+| `AddBehavior(type, lifetime)` | Registers behavior with specific lifetime |
+| `AddBehavior<T>()` | Registers behavior with default lifetime |
+| `AddBehavior<T>(lifetime)` | Registers behavior with specific lifetime |
 
 ## License
 

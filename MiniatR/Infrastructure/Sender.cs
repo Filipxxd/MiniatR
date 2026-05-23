@@ -5,6 +5,10 @@ namespace MiniatR;
 
 internal sealed class Sender(IServiceProvider serviceProvider) : ISender
 {
+    private static readonly Type OpenHandlerType = typeof(IRequestHandler<,>);
+    private static readonly Type OpenVoidHandlerType = typeof(IRequestHandler<>);
+    private static readonly Type OpenBehaviorType = typeof(IPipelineBehavior<,>);
+
     private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
@@ -15,11 +19,11 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
         var requestType = request.GetType();
         var responseType = typeof(TResponse);
 
-        var handlerType = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType);
+        var handlerType = OpenHandlerType.MakeGenericType(requestType, responseType);
         var handler = _serviceProvider.GetService(handlerType)
             ?? throw new HandlerNotFoundException(requestType, responseType);
 
-        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+        var behaviorType = OpenBehaviorType.MakeGenericType(requestType, responseType);
         var behaviors = _serviceProvider.GetServices(behaviorType).Cast<object>().ToList();
 
         return await ExecutePipeline<TResponse>(requestType, responseType, request, handler, behaviors, cancellationToken).ConfigureAwait(false);
@@ -32,11 +36,11 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
 
         var requestType = request.GetType();
 
-        var handlerType = typeof(IRequestHandler<>).MakeGenericType(requestType);
+        var handlerType = OpenVoidHandlerType.MakeGenericType(requestType);
         var handler = _serviceProvider.GetService(handlerType)
             ?? throw new HandlerNotFoundException(requestType, null);
 
-        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(Nothing));
+        var behaviorType = OpenBehaviorType.MakeGenericType(requestType, typeof(Nothing));
         var behaviors = _serviceProvider.GetServices(behaviorType).Cast<object>().ToList();
 
         await ExecuteVoidPipeline(requestType, request, handler, behaviors, cancellationToken).ConfigureAwait(false);
@@ -58,16 +62,16 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
             return handlerInvoker(handler, request, ct);
         };
 
-        foreach (var behavior in Enumerable.Reverse(behaviors))
+        for (var i = behaviors.Count - 1; i >= 0; i--)
         {
+            var behavior = behaviors[i];
             var behaviorInvoker = InvokerCache.GetBehaviorInvoker<TResponse>(behavior.GetType(), requestType, responseType);
             var current = pipeline;
-            var captured = behavior;
 
             pipeline = ct =>
             {
                 ct.ThrowIfCancellationRequested();
-                return behaviorInvoker(captured, request, current, ct);
+                return behaviorInvoker(behavior, request, current, ct);
             };
         }
 
@@ -83,26 +87,35 @@ internal sealed class Sender(IServiceProvider serviceProvider) : ISender
     {
         var handlerInvoker = InvokerCache.GetVoidHandlerInvoker(requestType);
 
-        PipelineDelegate<Nothing> pipeline = async ct =>
+        PipelineDelegate<Nothing> pipeline = ct =>
         {
             ct.ThrowIfCancellationRequested();
-            await handlerInvoker(handler, request, ct).ConfigureAwait(false);
-            return Nothing.Value;
+            return InvokeVoidHandler(handlerInvoker, handler, request, ct);
         };
 
-        foreach (var behavior in Enumerable.Reverse(behaviors))
+        for (var i = behaviors.Count - 1; i >= 0; i--)
         {
+            var behavior = behaviors[i];
             var behaviorInvoker = InvokerCache.GetBehaviorInvoker<Nothing>(behavior.GetType(), requestType, typeof(Nothing));
             var current = pipeline;
-            var captured = behavior;
 
             pipeline = ct =>
             {
                 ct.ThrowIfCancellationRequested();
-                return behaviorInvoker(captured, request, current, ct);
+                return behaviorInvoker(behavior, request, current, ct);
             };
         }
 
         await pipeline(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<Nothing> InvokeVoidHandler(
+        Func<object, object, CancellationToken, Task> invoker,
+        object handler,
+        object request,
+        CancellationToken cancellationToken)
+    {
+        await invoker(handler, request, cancellationToken).ConfigureAwait(false);
+        return Nothing.Value;
     }
 }

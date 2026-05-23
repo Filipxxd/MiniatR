@@ -15,6 +15,8 @@ public sealed class PipelineTests : IDisposable
         ShortCircuitBehavior<GetUserQuery, UserResponse>.Reset();
         ThrowingBehavior<GetUserQuery, UserResponse>.Reset();
         OrderTrackingBehavior<GetUserQuery, UserResponse>.Reset();
+        RetryBehavior<ThrowingQuery, string>.Reset();
+        PassThroughBehavior<StressTestQuery, string>.Reset();
         DeleteUserCommandHandler.Reset();
     }
 
@@ -37,9 +39,10 @@ public sealed class PipelineTests : IDisposable
 
         await sender.Send(new GetUserQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        LoggingBehavior<GetUserQuery, UserResponse>.Log.Should().HaveCount(2);
-        LoggingBehavior<GetUserQuery, UserResponse>.Log[0].Should().StartWith("Before:");
-        LoggingBehavior<GetUserQuery, UserResponse>.Log[1].Should().StartWith("After:");
+        var log = LoggingBehavior<GetUserQuery, UserResponse>.Log.ToArray();
+        log.Should().HaveCount(2);
+        log[0].Should().StartWith("Before:");
+        log[1].Should().StartWith("After:");
     }
 
     [Fact]
@@ -54,7 +57,7 @@ public sealed class PipelineTests : IDisposable
 
         await sender.Send(new GetUserQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        OrderTrackingBehavior<GetUserQuery, UserResponse>.ExecutionOrder.Should().Equal(
+        OrderTrackingBehavior<GetUserQuery, UserResponse>.ExecutionOrder.ToArray().Should().Equal(
             "Behavior1-Before",
             "Behavior2-Before",
             "Behavior3-Before",
@@ -114,6 +117,47 @@ public sealed class PipelineTests : IDisposable
         var result = await sender.Send(new GetUserQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RetryBehavior_CanCallNextMultipleTimes()
+    {
+        RetryBehavior<ThrowingQuery, string>.Reset();
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<ThrowingQuery>());
+        services.AddScoped<IPipelineBehavior<ThrowingQuery, string>, RetryBehavior<ThrowingQuery, string>>();
+        var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sender.Send(new ThrowingQuery(), TestContext.Current.CancellationToken));
+
+        RetryBehavior<ThrowingQuery, string>.CallCount.Should().Be(3);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(50)]
+    [InlineData(100)]
+    public async Task Pipeline_WithManyBehaviors_ExecutesAllInOrder(int behaviorCount)
+    {
+        PassThroughBehavior<StressTestQuery, string>.Reset();
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg.RegisterServicesFromAssemblyContaining<StressTestQuery>());
+
+        for (var i = 0; i < behaviorCount; i++)
+        {
+            var id = i;
+            services.AddScoped<IPipelineBehavior<StressTestQuery, string>>(_ => new PassThroughBehavior<StressTestQuery, string>(id));
+        }
+
+        var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
+
+        var result = await sender.Send(new StressTestQuery(), TestContext.Current.CancellationToken);
+
+        result.Should().Be("success");
+        var executionLog = PassThroughBehavior<StressTestQuery, string>.ExecutionLog.ToArray();
+        executionLog.Should().HaveCount(behaviorCount);
+        executionLog.Should().BeInAscendingOrder();
     }
 
     private static ISender CreateSender()

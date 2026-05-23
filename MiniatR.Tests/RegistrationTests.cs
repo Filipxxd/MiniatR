@@ -139,19 +139,18 @@ public sealed class RegistrationTests
     }
 
     [Fact]
-    public void DuplicateHandlers_ThrowsDuplicateHandlerException()
+    public void DuplicateAssemblyRegistration_IsIgnored()
     {
         var services = new ServiceCollection();
-        var assembly = typeof(GetUserQuery).Assembly;
 
-        var ex = Assert.Throws<DuplicateHandlerException>(() =>
-            services.AddMiniatR(cfg => cfg
-                .RegisterServicesFromAssembly(assembly)
-                .RegisterServicesFromAssembly(assembly)));
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .RegisterServicesFromAssemblyContaining<DeleteUserCommand>());
 
-        ex.RequestType.Should().Be(typeof(GetUserQuery));
-        ex.HandlerTypes.Should().HaveCount(2);
+        var sender = services.BuildServiceProvider().GetService<ISender>();
+        sender.Should().NotBeNull();
     }
+
 
     [Fact]
     public void RegisterServicesFromAssembly_RegistersHandlers()
@@ -183,6 +182,23 @@ public sealed class RegistrationTests
     }
 
     [Fact]
+    public void AddBehavior_WithPerBehaviorLifetime_OverridesDefault()
+    {
+        var services = new ServiceCollection();
+        services.AddMiniatR(cfg => cfg
+            .RegisterServicesFromAssemblyContaining<GetUserQuery>()
+            .WithBehaviorLifetime(ServiceLifetime.Scoped)
+            .AddBehavior(typeof(LoggingBehavior<,>), ServiceLifetime.Singleton)
+            .AddBehavior<ThrowingBehavior<GetUserQuery, UserResponse>>(ServiceLifetime.Transient));
+
+        var loggingDescriptor = services.First(s => s.ImplementationType == typeof(LoggingBehavior<,>));
+        var throwingDescriptor = services.First(s => s.ImplementationType == typeof(ThrowingBehavior<GetUserQuery, UserResponse>));
+
+        loggingDescriptor.Lifetime.Should().Be(ServiceLifetime.Singleton);
+        throwingDescriptor.Lifetime.Should().Be(ServiceLifetime.Transient);
+    }
+
+    [Fact]
     public void AddBehavior_WithType_RegistersBehavior()
     {
         var services = new ServiceCollection();
@@ -204,7 +220,7 @@ public sealed class RegistrationTests
             .RegisterServicesFromAssemblyContaining<GetUserQuery>()
             .AddBehavior<LoggingBehavior<GetUserQuery, UserResponse>>());
 
-        var descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IPipelineBehavior<,>));
+        var descriptor = services.FirstOrDefault(s => s.ServiceType == typeof(IPipelineBehavior<GetUserQuery, UserResponse>));
 
         descriptor.Should().NotBeNull();
     }

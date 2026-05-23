@@ -10,10 +10,11 @@ MiniatR/
 │   ├── IRequest.cs             # Request interfaces (IRequest<T>, IRequest)
 │   ├── IRequestHandler.cs      # Handler interfaces
 │   ├── ISender.cs              # Public interface for sending requests
-│   ├── Sender.cs               # Internal ISender implementation
-│   ├── InvokerCache.cs         # Compiled expression tree cache for handler/behavior invocation
 │   ├── IPipelineBehavior.cs    # Pipeline behavior interface and delegate
 │   ├── Nothing.cs              # Unit type for void requests
+│   ├── Infrastructure/
+│   │   ├── Sender.cs           # Internal ISender implementation
+│   │   └── InvokerCache.cs     # Compiled expression tree cache
 │   ├── Exceptions/
 │   │   ├── HandlerNotFoundException.cs
 │   │   └── DuplicateHandlerException.cs
@@ -43,7 +44,13 @@ MiniatR/
 - **IRequestHandler<TRequest>**: Handles void requests
 - **ISender**: Sends requests through the pipeline
 - **IPipelineBehavior<TRequest, TResponse>**: Middleware for cross-cutting concerns
-- **PipelineDelegate<TResponse>**: Delegate to call next in pipeline (accepts CancellationToken)
+- **PipelineDelegate<TResponse>**: Delegate to call next in pipeline (can be called multiple times for retry patterns)
+
+## Service Lifetimes
+
+- Handlers: configured globally via `WithHandlerLifetime()` (default: Scoped)
+- Behaviors: configured globally via `WithBehaviorLifetime()` or per-behavior via `AddBehavior(type, lifetime)` overloads
+- Per-behavior lifetime overrides the global default
 
 ## Commands
 
@@ -93,21 +100,24 @@ dotnet pack MiniatR/MiniatR.csproj --configuration Release --output ./nupkg
 
 - Tests use xUnit v3 with `TestContext.Current.CancellationToken`
 - Tests sharing static state use `[Collection("Sequential")]` to prevent parallelization issues
+- Test fixtures use `ConcurrentQueue<T>` for thread-safe logging/tracking
 - Test fixtures are in `MiniatR.Tests/Fixtures/`
 - Use `Theory` with `InlineData` for parameterized tests
 - Reset static state at start of tests that depend on it
 
 ## Coverage Goals
 
-- **Minimum 95% line coverage** (enforced in CI - build fails if below)
+- **Minimum 90% line coverage** (enforced in CI - build fails if below)
 - Aim for 100% method coverage
 
 ## Architecture Notes
 
 - All public types are in the root `MiniatR` namespace
 - Extensions are in `MiniatR.Extensions` namespace
-- Handlers are auto-discovered from registered assemblies
+- Handlers are auto-discovered from registered assemblies (duplicate assemblies are silently ignored)
 - Pipeline behaviors wrap handlers in registration order (first registered = outermost)
+- Pipeline delegate can be called multiple times by behaviors (enables retry/caching patterns)
 - Cancellation is checked at pipeline entry and before each behavior/handler execution
 - Handler/behavior invocation uses compiled expression trees (cached per request type) for performance
 - Behavior types are validated at registration time to ensure they implement `IPipelineBehavior<,>`
+- Deterministic builds enabled for reproducible packages

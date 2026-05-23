@@ -5,8 +5,8 @@ namespace MiniatR;
 
 internal static class InvokerCache
 {
-    private static readonly ConcurrentDictionary<(Type, Type), Delegate> _handlerInvokers = new();
-    private static readonly ConcurrentDictionary<(Type, Type), Delegate> _behaviorInvokers = new();
+    private static readonly ConcurrentDictionary<(Type RequestType, Type ResponseType), Delegate> _handlerInvokers = new();
+    private static readonly ConcurrentDictionary<(Type BehaviorType, Type ResponseType), Delegate> _behaviorInvokers = new();
 
     internal static Func<object, object, CancellationToken, Task<TResponse>> GetHandlerInvoker<TResponse>(
         Type requestType, Type responseType)
@@ -32,7 +32,9 @@ internal static class InvokerCache
         Type requestType, Type responseType)
     {
         var handlerInterfaceType = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType);
-        var handleMethod = handlerInterfaceType.GetMethod("Handle")!;
+        var handleMethod = handlerInterfaceType.GetMethod("Handle")
+            ?? throw new InvalidOperationException(
+                $"Method 'Handle' not found on '{handlerInterfaceType.FullName}'.");
 
         var handlerParam = Expression.Parameter(typeof(object), "handler");
         var requestParam = Expression.Parameter(typeof(object), "request");
@@ -51,7 +53,9 @@ internal static class InvokerCache
     private static Func<object, object, CancellationToken, Task> CompileVoidHandlerInvoker(Type requestType)
     {
         var handlerInterfaceType = typeof(IRequestHandler<>).MakeGenericType(requestType);
-        var handleMethod = handlerInterfaceType.GetMethod("Handle")!;
+        var handleMethod = handlerInterfaceType.GetMethod("Handle")
+            ?? throw new InvalidOperationException(
+                $"Method 'Handle' not found on '{handlerInterfaceType.FullName}'.");
 
         var handlerParam = Expression.Parameter(typeof(object), "handler");
         var requestParam = Expression.Parameter(typeof(object), "request");
@@ -71,7 +75,9 @@ internal static class InvokerCache
         Type behaviorType, Type requestType, Type responseType)
     {
         var behaviorInterfaceType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
-        var handleMethod = behaviorInterfaceType.GetMethod("Handle")!;
+        var handleMethod = behaviorInterfaceType.GetMethod("Handle")
+            ?? throw new InvalidOperationException(
+                $"Method 'Handle' not found on '{behaviorInterfaceType.FullName}'.");
 
         var behaviorParam = Expression.Parameter(typeof(object), "behavior");
         var requestParam = Expression.Parameter(typeof(object), "request");
